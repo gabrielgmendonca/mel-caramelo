@@ -1,10 +1,13 @@
 /**
- * Keyboard + mouse input. Edge-triggered presses are valid for the whole
- * frame (all fixed steps included) and cleared by endFrame().
+ * Keyboard + mouse input. Edge-triggered presses persist until consumed (or
+ * expire after PRESS_TTL_MS) — frames occasionally run zero fixed steps, so
+ * clearing presses every frame would randomly drop them.
  */
+const PRESS_TTL_MS = 150;
+
 export class Input {
   private down = new Set<string>();
-  private pressed = new Set<string>();
+  private pressed = new Map<string, number>(); // code → press timestamp
 
   mouseDX = 0;
   mouseDY = 0;
@@ -17,7 +20,7 @@ export class Input {
     window.addEventListener('keydown', (e) => {
       if (e.repeat) return;
       this.down.add(e.code);
-      this.pressed.add(e.code);
+      this.pressed.set(e.code, performance.now());
     });
     window.addEventListener('keyup', (e) => {
       this.down.delete(e.code);
@@ -64,7 +67,7 @@ export class Input {
 
   /** Synthetic button press from a touch control. */
   touchPress(code: string): void {
-    this.pressed.add(code);
+    this.pressed.set(code, performance.now());
     this.down.add(code);
   }
 
@@ -102,7 +105,7 @@ export class Input {
     for (const [index, code] of buttonToKey) {
       const pressed = gp.buttons[index]?.pressed ?? false;
       const was = this.gpPrevButtons.get(index) ?? false;
-      if (pressed && !was) this.pressed.add(code);
+      if (pressed && !was) this.pressed.set(code, performance.now());
       if (pressed) this.down.add(code);
       else if (was) this.down.delete(code);
       this.gpPrevButtons.set(index, pressed);
@@ -130,6 +133,10 @@ export class Input {
     return this.pressed.delete(code);
   }
 
+  get perfTogglePressed(): boolean {
+    return this.consumePressed('F3');
+  }
+
   get jumpPressed(): boolean {
     return this.consumePressed('Space');
   }
@@ -142,17 +149,18 @@ export class Input {
     return this.consumePressed('KeyB');
   }
 
-  get perfTogglePressed(): boolean {
-    return this.pressed.has('F3');
-  }
-
   isDown(code: string): boolean {
     return this.down.has(code);
   }
 
   /** Call once per rAF frame, after all updates. */
   endFrame(): void {
-    this.pressed.clear();
+    // expire unconsumed presses; never clear fresh ones — a frame can run
+    // zero fixed steps and the next one must still see the press
+    const now = performance.now();
+    for (const [code, t] of this.pressed) {
+      if (now - t > PRESS_TTL_MS) this.pressed.delete(code);
+    }
     this.mouseDX = 0;
     this.mouseDY = 0;
     this.touchLookDX = 0;
