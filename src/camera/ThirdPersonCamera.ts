@@ -59,6 +59,14 @@ export class ThirdPersonCamera {
         PITCH_MAX,
       );
     }
+    if (input.touchLookDX || input.touchLookDY) {
+      this.yaw -= input.touchLookDX * 0.006;
+      this.pitch = THREE.MathUtils.clamp(
+        this.pitch - input.touchLookDY * 0.006,
+        PITCH_MIN,
+        PITCH_MAX,
+      );
+    }
 
     const blend = 1 - Math.exp(-PIVOT_RESPONSE * dt);
     this.pivot.lerp(

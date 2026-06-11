@@ -20,6 +20,7 @@ import type { Collectible } from '../entities/Collectible';
 import { HUD } from '../ui/HUD';
 import { TitleScreen } from '../ui/TitleScreen';
 import { PauseMenu } from '../ui/PauseMenu';
+import { TouchControls, isTouchDevice } from '../ui/TouchControls';
 import { STR } from '../ui/strings';
 import type { AudioSystem } from '../audio/AudioSystem';
 
@@ -54,6 +55,7 @@ export class Game {
   private barkTimer = 0;
   private barkPulse = 0;
   private flipTimer = 0;
+  private isTouch = isTouchDevice();
   private respawnFade: HTMLDivElement;
   private elapsed = 0;
   private perfOverlay: HTMLDivElement;
@@ -106,6 +108,12 @@ export class Game {
     this.hud = new HUD(uiRoot, LEVEL.notas.length, LEVEL.bones.length);
     this.pauseMenu = new PauseMenu(uiRoot, () => this.resume());
     this.titleScreen = new TitleScreen(uiRoot, () => this.startPlaying());
+    if (this.isTouch) {
+      new TouchControls(uiRoot, this.input, () => {
+        if (this.state === 'playing') this.pause();
+        else if (this.state === 'paused') this.resume();
+      });
+    }
 
     this.respawnFade = document.createElement('div');
     this.respawnFade.id = 'respawn-fade';
@@ -124,7 +132,7 @@ export class Game {
     this.player.onLand = () => this.audio.play('land', { volume: 0.3 });
 
     canvas.addEventListener('click', () => {
-      if (this.state === 'playing') this.input.requestPointerLock();
+      if (this.state === 'playing' && !this.isTouch) this.input.requestPointerLock();
     });
     // browser Esc exits pointer lock → treat as pause
     document.addEventListener('pointerlockchange', () => {
@@ -154,7 +162,7 @@ export class Game {
   private startPlaying(): void {
     this.state = 'playing';
     this.titleScreen.hide();
-    this.input.requestPointerLock();
+    if (!this.isTouch) this.input.requestPointerLock();
     void this.audio.unlock().then(() => this.audio.playMusic('music'));
   }
 
@@ -169,7 +177,7 @@ export class Game {
   private resume(): void {
     this.state = 'playing';
     this.pauseMenu.hide();
-    this.input.requestPointerLock();
+    if (!this.isTouch) this.input.requestPointerLock();
     this.audio.setPaused(false);
   }
 
@@ -331,7 +339,9 @@ export class Game {
     sun.position.set(40, 60, 0);
     sun.target.position.set(0, 5, 30);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(4096, 4096);
+    // mobile GPUs get a lighter shadow map
+    const shadowSize = this.isTouch ? 2048 : 4096;
+    sun.shadow.mapSize.set(shadowSize, shadowSize);
     sun.shadow.camera.left = -45;
     sun.shadow.camera.right = 45;
     sun.shadow.camera.top = 50;

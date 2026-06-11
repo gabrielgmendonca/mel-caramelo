@@ -56,6 +56,22 @@ export class Input {
     return document.pointerLockElement === this.canvas;
   }
 
+  // touch state, written by TouchControls (virtual joystick + buttons)
+  touchMoveX = 0;
+  touchMoveZ = 0;
+  touchLookDX = 0;
+  touchLookDY = 0;
+
+  /** Synthetic button press from a touch control. */
+  touchPress(code: string): void {
+    this.pressed.add(code);
+    this.down.add(code);
+  }
+
+  touchRelease(code: string): void {
+    this.down.delete(code);
+  }
+
   // gamepad state (left stick move, right stick look, A jump, X bark)
   private gpMoveX = 0;
   private gpMoveZ = 0;
@@ -97,13 +113,13 @@ export class Input {
   get moveX(): number {
     const kb = (this.isDown('KeyD') || this.isDown('ArrowRight') ? 1 : 0) -
       (this.isDown('KeyA') || this.isDown('ArrowLeft') ? 1 : 0);
-    return Math.max(-1, Math.min(1, kb + this.gpMoveX));
+    return Math.max(-1, Math.min(1, kb + this.gpMoveX + this.touchMoveX));
   }
 
   get moveZ(): number {
     const kb = (this.isDown('KeyW') || this.isDown('ArrowUp') ? 1 : 0) -
       (this.isDown('KeyS') || this.isDown('ArrowDown') ? 1 : 0);
-    return Math.max(-1, Math.min(1, kb + this.gpMoveZ));
+    return Math.max(-1, Math.min(1, kb + this.gpMoveZ + this.touchMoveZ));
   }
 
   /**
@@ -139,5 +155,7 @@ export class Input {
     this.pressed.clear();
     this.mouseDX = 0;
     this.mouseDY = 0;
+    this.touchLookDX = 0;
+    this.touchLookDY = 0;
   }
 }
