@@ -2,6 +2,9 @@ import RAPIER from '@dimforge/rapier3d-compat';
 import { AssetManager } from './core/AssetManager';
 import { AudioSystem } from './audio/AudioSystem';
 import { Game } from './core/Game';
+import { preventMobileZoom } from './core/preventMobileZoom';
+
+preventMobileZoom();
 
 const MANIFEST = [{ name: 'shiba', url: 'assets/models/shiba.glb' }];
 

@@ -1,8 +1,11 @@
 // Mobile emulation tests: touch UI appears, joystick moves Mel, jump/bark
 // buttons work, look-drag rotates the camera.
-import { chromium, devices } from 'playwright';
+// Usage: node scripts/mobile-test.mjs [chromium|webkit] [url]
+import { chromium, webkit, devices } from 'playwright';
 
-const browser = await chromium.launch();
+const engine = process.argv[2] === 'webkit' ? webkit : chromium;
+const url = process.argv[3] ?? 'http://localhost:5174/';
+const browser = await engine.launch();
 const context = await browser.newContext({
   ...devices['iPhone 13 landscape'],
   hasTouch: true,
@@ -17,8 +20,8 @@ const check = (name, ok, detail = '') => {
   if (!ok) failures++;
 };
 
-await page.goto('http://localhost:5174/');
-await page.waitForTimeout(1500);
+await page.goto(url);
+await page.waitForTimeout(2000);
 
 // 1. Touch title hint
 const hint = await page.locator('.start-hint').textContent();
